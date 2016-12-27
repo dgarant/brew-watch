@@ -1,0 +1,4 @@
+sudo apt-get install -y python-smbus i2c-tools libi2c-dev
+# sudo raspi-config -> Advanced Options -> I2C -> (yes, yes)
+# TSL2561 driver from github.com/lexruee/tsl2561
+

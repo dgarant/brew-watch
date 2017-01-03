@@ -1,0 +1,147 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<script type="text/javascript" src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
+		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.3/d3.min.js"></script>
+		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.9.0/moment.min.js"></script>
+		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/dygraph/1.1.0/dygraph-combined.js"></script>
+		<script type="text/javascript" src="/static/js/spline-plotter.js"></script>
+
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
+	</head>
+	<body>
+		<nav class="navbar navbar-default">
+			<div class="container-fluid">
+				<a class="navbar-brand" href="#">Lab Temp</a>
+			</div>
+		</nav>
+	    <div class="col-md-offset-1">
+		<div class="row">
+			<!-- <div class="col-md-4">
+				<h3>Target Temperature: 72&deg;F - 75&deg;F</h3>
+			</div> -->
+			<div class="col-md-6">
+				<h3 id="last-reading-indicator"></h3>
+			</div>
+            <div class="col-md-6">
+                <h4>Units</h4>
+                <div class="btn-group" data-toggle="buttons">
+                    <label class="btn btn-primary active">
+                        <input type="radio" name="temp_mode" value="temperature_f" checked> Fahrenheit
+                    </label>
+                    <label class="btn btn-primary">
+                        <input type="radio" name="temp_mode" value="temperature_c"> Celsius
+                    </label>
+                </div>
+                <br/>
+                <h4>Time Window</h4>
+                <div class="btn-group" data-toggle="buttons">
+                    <label class="btn btn-default ">
+                        <input type="radio" name="time_window" value="1" > 1 day
+                    </label>
+                    <label class="btn btn-default active">
+                        <input type="radio" name="time_window" value="5" checked> 5 days
+                    </label>
+                    <label class="btn btn-default">
+                        <input type="radio" name="time_window" value="30"> 1 month
+                    </label>
+                </div>
+
+            </div>
+		</div>
+		<div class="row">
+			<div class="col-md-4">
+				<h3 id="last-temp-indicator"></h3>
+			</div>
+			<div class="col-md-6">
+				<h3 id="heat-indicator"></h3>
+			</div>
+		</div>
+
+		<div class="row">
+			<div class="col-md-5">
+				<h3>Temperature</h3>
+				<div id="temp-chart">
+				</div>
+			</div>
+			<div class="col-md-5">
+				<h3>Humidity</h3>
+				<div id="humidity-chart">
+				</div>
+			</div>
+			</div>
+		</div>
+
+		<script type="text/javascript">
+
+			function showMeasurements() {
+                var timeWindow = parseInt($("input[name=time_window]:checked").val());
+                var startDate = moment().subtract(timeWindow, "days").format("YYYY-MM-DD");
+				$.getJSON("/measurements?start-date=" + startDate, 
+                function(data) {
+					var dyTempData = [];
+					var dyHumidData = [];
+					var latestMoment = moment([1900, 01, 01]);
+					var latestMeasurement = null;
+                    var tempField = $("input[name=temp_mode]:checked").val();
+					$(data["results"]).each(function(i, d) { 
+                        d["temperature_c"] = (d["temperature_f"] - 32) * (5./9.);
+						var time = moment(d["timestamp"]);
+						if(time.isAfter(latestMoment)) {
+							latestTime = time.local();
+							latestMeasurement = d;
+						}
+						dyTempData.push([time.toDate(), d[tempField]]);
+						dyHumidData.push([time.toDate(), d["humidity_pct"]]);
+					});
+					$("#last-temp-indicator").html("Current Temperature: <b>" + (Math.round(latestMeasurement[tempField] * 10) / 10.) + "</b>");
+					//$("#heat-indicator").html("Heating Pad <b>" + (latestMeasurement["is_heat_on"] ? "On" : "Off") + "</b>");
+					$("#last-reading-indicator").html("Last Update: <b>" + latestTime.format("LLLL") + "</b>");
+
+					new Dygraph(document.getElementById("temp-chart"),
+							dyTempData,
+							{
+								labels: ["Time", tempField == "temperature_f" ? "Temp (F)" : "Temp (C)"],
+								showRangeSelector: true,
+								color: "steelblue",
+								strokeWidth: 2,
+								xValueFormatter: function(x) {
+									return moment(x).format("ddd h:mm a")
+								},
+								plotter: smoothPlotter
+
+							});
+					new Dygraph(document.getElementById("humidity-chart"),
+							dyHumidData,
+							{
+								labels: ["Time", "Humidity %"],
+								showRangeSelector: true,
+								strokeWidth: 2,
+								xValueFormatter: function(x) {
+									return moment(x).format("ddd h:mm a")
+								},
+								plotter: smoothPlotter
+							});
+						
+				});
+			}
+
+			showMeasurements();
+			// refresh every 10 mins
+			setInterval(showMeasurements, 1000 * 60 * 10);
+
+            $("input[name=temp_mode]").change(function() {
+                showMeasurements();
+            });
+
+            $("input[name=time_window]").change(function() {
+                showMeasurements();
+            });
+					
+		</script>
+	</body>
+</html>
+
+

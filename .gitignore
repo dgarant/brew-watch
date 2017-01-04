@@ -1,0 +1,6 @@
+*.pyc
+.Rhistory
+data.s3db
+applog.txt
+*.swp
+

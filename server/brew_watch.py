@@ -1,16 +1,23 @@
 import flask
+from flask import render_template
 from flask import Flask, g, abort, request
 import sqlite3
 import datetime
 import os
 import logging
+from dateutil import parser as dparser
 from logging.handlers import RotatingFileHandler
+from logging import StreamHandler
 app = Flask(__name__)
 
 file_handler = RotatingFileHandler(os.path.join(os.path.dirname(__file__), "applog.txt"), 
 			maxBytes=1024 * 1024 * 1024, backupCount=3)
 file_handler.setLevel(logging.WARNING)
 app.logger.addHandler(file_handler)
+
+console_logger = StreamHandler()
+app.logger.addHandler(console_logger)
+
 
 DATABASE=os.path.join(os.path.dirname(__file__), "data.s3db")
 
@@ -35,14 +42,20 @@ def close_connection(exception):
 def connect_to_database():
 	return sqlite3.connect(DATABASE)
 	
-@app.route("/", methods=["GET"])
-def home():
-	measurements = query_db("select timestamp, temperature_f, humidity_pct from measurement")
+@app.route("/measurements", methods=["GET"])
+def measurements():
+	start_date = dparser.parse(request.args.get("start-date", (datetime.datetime.now() - datetime.timedelta(days=5)).isoformat()))
+	measurements = query_db("select timestamp, temperature_f, humidity_pct, is_heat_on, lux " + 
+						"from measurement where timestamp > ?", [start_date.isoformat()])
 	structured_data = []
 	for m in measurements:
-		structured_data.append({"timestamp" : m[0], "temperature_f" : m[1], "humidity_pct" : m[2]})
+		structured_data.append({"timestamp" : m[0], "temperature_f" : m[1], "humidity_pct" : m[2], "is_heat_on" : m[3], "lux" : m[4]})
 		
 	return flask.jsonify(results=structured_data)
+
+@app.route("/", methods=["GET"])
+def home():
+	return render_template("home.html")	
 
 @app.route("/", methods=["POST"])
 def add_measurement():
@@ -59,8 +72,8 @@ def add_measurement():
 
 	db = get_db()
 	cursor = db.cursor()
-	cursor.execute("insert into measurement (timestamp, temperature_f, humidity_pct) values (?, ?, ?)", 
-		(datetime.datetime.now().isoformat(), temperature_f, measurement_info["humidity_pct"]))
+	cursor.execute("insert into measurement (timestamp, temperature_f, humidity_pct, is_heat_on, lux) values (?, ?, ?, ?, ?)", 
+		(datetime.datetime.now().isoformat(), temperature_f, measurement_info["humidity_pct"], measurement_info["is_heat_on"], measurement_info["lux"]))
 	db.commit()
 	cursor.close()
 	

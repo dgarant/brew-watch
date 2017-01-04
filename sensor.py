@@ -53,16 +53,19 @@ if False: # disabling heating pad
 	    action = "on"
 	    GPIO.output(15, True)	
 
-tsl = TSL2561(0x39,"/dev/i2c-1")
-tsl.enable_autogain()
-tsl.set_time(0x00)
-# take 3 lux readings and compute the median
-lux_readings = []
-for i in range(3):
-    lux_readings.append(tsl.lux())
-    time.sleep(0.1)
-lux_median = sorted(lux_readings)[1]
-print("Lux: {0}".format(lux_median))
+if False: 
+    tsl = TSL2561(0x39,"/dev/i2c-1")
+    tsl.enable_autogain()
+    tsl.set_time(0x00)
+    # take 3 lux readings and compute the median
+    lux_readings = []
+    for i in range(3):
+	lux_readings.append(tsl.lux())
+	time.sleep(0.1)
+    lux_median = sorted(lux_readings)[1]
+    print("Lux: {0}".format(lux_median))
+else:
+    lux_median = None
 
 data={"temp" : temperature, 
       "temp_scale" : "C", 

@@ -45,11 +45,11 @@ def connect_to_database():
 @app.route("/measurements", methods=["GET"])
 def measurements():
 	start_date = dparser.parse(request.args.get("start-date", (datetime.datetime.now() - datetime.timedelta(days=5)).isoformat()))
-	measurements = query_db("select timestamp, temperature_f, humidity_pct, is_heat_on " + 
+	measurements = query_db("select timestamp, temperature_f, humidity_pct, is_heat_on, lux " + 
 						"from measurement where timestamp > ?", [start_date.isoformat()])
 	structured_data = []
 	for m in measurements:
-		structured_data.append({"timestamp" : m[0], "temperature_f" : m[1], "humidity_pct" : m[2], "is_heat_on" : m[3]})
+		structured_data.append({"timestamp" : m[0], "temperature_f" : m[1], "humidity_pct" : m[2], "is_heat_on" : m[3], "lux" : m[4]})
 		
 	return flask.jsonify(results=structured_data)
 
@@ -72,8 +72,8 @@ def add_measurement():
 
 	db = get_db()
 	cursor = db.cursor()
-	cursor.execute("insert into measurement (timestamp, temperature_f, humidity_pct, is_heat_on) values (?, ?, ?, ?)", 
-		(datetime.datetime.now().isoformat(), temperature_f, measurement_info["humidity_pct"], measurement_info["is_heat_on"]))
+	cursor.execute("insert into measurement (timestamp, temperature_f, humidity_pct, is_heat_on, lux) values (?, ?, ?, ?, ?)", 
+		(datetime.datetime.now().isoformat(), temperature_f, measurement_info["humidity_pct"], measurement_info["is_heat_on"], measurement_info["lux"]))
 	db.commit()
 	cursor.close()
 	

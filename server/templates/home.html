@@ -73,6 +73,11 @@
 				<div id="humidity-chart">
 				</div>
 			</div>
+			<div class="col-md-5">
+				<h3>Light (Lux)</h3>
+				<div id="lux-chart">
+				</div>
+			</div>
 			</div>
 		</div>
 
@@ -85,6 +90,7 @@
                 function(data) {
 					var dyTempData = [];
 					var dyHumidData = [];
+					var dyLuxData = [];
 					var latestMoment = moment([1900, 01, 01]);
 					var latestMeasurement = null;
                     var tempField = $("input[name=temp_mode]:checked").val();
@@ -97,6 +103,7 @@
 						}
 						dyTempData.push([time.toDate(), d[tempField]]);
 						dyHumidData.push([time.toDate(), d["humidity_pct"]]);
+						dyLuxData.push([time.toDate(), d["lux"]]);
 					});
 					$("#last-temp-indicator").html("Current Temperature: <b>" + (Math.round(latestMeasurement[tempField] * 10) / 10.) + "</b>");
 					//$("#heat-indicator").html("Heating Pad <b>" + (latestMeasurement["is_heat_on"] ? "On" : "Off") + "</b>");
@@ -119,6 +126,17 @@
 							dyHumidData,
 							{
 								labels: ["Time", "Humidity %"],
+								showRangeSelector: true,
+								strokeWidth: 2,
+								xValueFormatter: function(x) {
+									return moment(x).format("ddd h:mm a")
+								},
+								plotter: smoothPlotter
+							});
+					new Dygraph(document.getElementById("lux-chart"),
+							dyLuxData,
+							{
+								labels: ["Time", "Lux"],
 								showRangeSelector: true,
 								strokeWidth: 2,
 								xValueFormatter: function(x) {

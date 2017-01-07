@@ -109,42 +109,63 @@
 					//$("#heat-indicator").html("Heating Pad <b>" + (latestMeasurement["is_heat_on"] ? "On" : "Off") + "</b>");
 					$("#last-reading-indicator").html("Last Update: <b>" + latestTime.format("LLLL") + "</b>");
 
-					new Dygraph(document.getElementById("temp-chart"),
+                    var blockRedraw = false;
+                    // callback to adjust the bind the range selectors for all charts
+					function synchronizeDrawCallback(me, initial) {
+                        if (blockRedraw || initial) 
+                            return;
+                        blockRedraw = true;
+                        var range = me.xAxisRange();
+                        for (var j = 0; j < 3; j++) {
+                          if (charts[j] == me) 
+                              continue;
+                          charts[j].updateOptions({
+                            dateWindow: range,
+                          });
+                        }
+
+                        blockRedraw = false;
+                    }
+
+					var tempGraph = new Dygraph(document.getElementById("temp-chart"),
 							dyTempData,
 							{
 								labels: ["Time", tempField == "temperature_f" ? "Temp (F)" : "Temp (C)"],
 								showRangeSelector: true,
 								color: "steelblue",
 								strokeWidth: 2,
+                                drawCallback: synchronizeDrawCallback,
 								xValueFormatter: function(x) {
 									return moment(x).format("ddd h:mm a")
 								},
 								plotter: smoothPlotter
 
 							});
-					new Dygraph(document.getElementById("humidity-chart"),
+					var humidityGraph = new Dygraph(document.getElementById("humidity-chart"),
 							dyHumidData,
 							{
 								labels: ["Time", "Humidity %"],
 								showRangeSelector: true,
 								strokeWidth: 2,
+                                drawCallback: synchronizeDrawCallback,
 								xValueFormatter: function(x) {
 									return moment(x).format("ddd h:mm a")
 								},
 								plotter: smoothPlotter
 							});
-					new Dygraph(document.getElementById("lux-chart"),
+					var luxGraph = new Dygraph(document.getElementById("lux-chart"),
 							dyLuxData,
 							{
 								labels: ["Time", "Lux"],
 								showRangeSelector: true,
 								strokeWidth: 2,
+                                drawCallback: synchronizeDrawCallback,
 								xValueFormatter: function(x) {
 									return moment(x).format("ddd h:mm a")
 								},
 								plotter: smoothPlotter
 							});
-						
+                    charts = [tempGraph, humidityGraph, luxGraph];
 				});
 			}
 

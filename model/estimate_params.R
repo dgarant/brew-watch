@@ -1,0 +1,15 @@
+library(RSQLite)
+library(rstan)
+library(insol)
+conn <- dbConnect(RSQLite::SQLite(), "data.s3db")
+result <- dbSendQuery(conn, "select * from measurement")
+measurements <- dbFetch(result, n=-1)
+print(dim(measurements))
+dbClearResult(result)
+dbDisconnect(conn)
+measurements$date <- strptime(measurements$timestamp, format="%Y-%m-%dT%H:%M:%OS")
+
+measurements.with.lux <- subset(measurements, !is.na(lux) & measurements$date < as.POSIXlt("2017-01-09"))
+
+jd <- JD(seq(ISOdate(2012,3,20,0),ISOdate(2012,3,20,23),by="hour"))
+sunpos(sunvector(jd), )

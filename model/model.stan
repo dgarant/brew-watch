@@ -1,13 +1,21 @@
 data {
   int<lower=0> N;
   int<lower=0> delta_t_mins;
-  vector[N] day_of_week;
-  vector[N] hour_of_day;
-  vector[N] sun_peak_delta_mins;
-  vector[N] lux;
-  vector[N] prev_external_temp;
-  vector[N] prev_temp;
-  vector[N] temp;
+  int day_of_week[N];
+  int hour_of_day[N];
+  real sun_azimuth[N];
+  real lux[N];
+  real prev_external_temp[N];
+  real prev_temp[N];
+  real temp[N];
+}
+transformed data {
+  int in_work_hours[N];
+  real occ_param[N];
+  for(i in 1:N) {
+    in_work_hours[i] = hour_of_day[i] >= 8 && hour_of_day[i] <= 18 && day_of_week[i] != 1 && day_of_week[i] != 7;
+    occ_param[i] = in_work_hours[i] ? 0.9 : 0.1; // background knowledge about lab occupation
+  }
 }
 parameters {
   # when multiplied by the external temperature, gives the frequency of the heat/cool cycle
@@ -20,9 +28,18 @@ parameters {
   real cycle_amplitude;
   real occ_baseline_temp;
   real nonocc_baseline_temp;
-  real sun_temp_beta;
+  real azimuth_beta;
+  real azimuth_peak;
 }
 model {
+  
+  real temp_means[N];
+  real cycle_freq[N];
+  real baseline_term[N];
+  real sun_term[N];
+  real prev_cycle_pos[N];
+  int occ[N];
+  real lux_term[N];
   
   temp_noise ~ normal(0, 3); # prior on noise in temperature measurement
   lux_noise ~ normal(0, 50); # prior on noise in lux measurement
@@ -30,25 +47,25 @@ model {
   cycle_amplitude ~ normal(2, 3); # prior on amplitude of heat/cool cycle (degrees C)
   occ_baseline_temp ~ normal(23, 3); # prior on median temperature when occupied (i.e. room thermostat setting)
   nonocc_baseline_temp ~ normal(20, 3); # prior on median temperature when unoccupied (i.e. building thermostat setting)
-  sun_temp_beta ~ normal(5, 5); # multiplicative effect of sun position on room temperature
+  azimuth_beta ~ normal(3, 5); # multiplicative effect of sun position on room temperature
+  azimuth_peak ~ normal(180, 50); # sun azimuth offset / normalizer
   
-  # occupation is just a function of time and day
-  if(hour_of_day >= 8 && hour_of_day <= 18 && day_of_week != 0 && day_of_week != 6) {
-    occ ~ bernoulli(0.9);
-  } else {
-    occ ~ bernoulli(0.1);
+  #occ ~ bernoulli(occ_prob);
+
+  for(i in 1:N) {
+    occ[i] = 1;
+    lux_term[i] = (occ[i] ? occ_lux : 0.0);
+    lux[i] ~ normal(sun_light_beta * delta_t_mins + lux_term[i], 3) T[0,];
+    
+    # frequency of the heat/cool cycle
+    cycle_freq[i] = cycle_freq_mult * prev_external_temp[i];
+    baseline_term[i] = (occ[i] ? occ_baseline_temp : nonocc_baseline_temp);
+    
+    sun_term[i] = azimuth_beta * fabs(sun_azimuth[i] - azimuth_peak);
+    prev_cycle_pos[i] = (prev_temp[i] - baseline_term[i] - sun_term[i]) / cycle_amplitude;
+    temp_means[i] = (baseline_term[i] + cycle_amplitude * 
+     sin(cycle_freq[i] + asin(prev_cycle_pos[i]) + delta_t_mins) + sun_term[i]);
   }
   
-  lux ~ lognormal(sun_light_beta * delta_t_mins + (occ == 1 ? log(occ_lux) : 0), lux_noise) T[0,];
-  
-  # frequency of the heat/cool cycle
-  cycle_freq <- cycle_freq_mult * prev_external_temp;
-  
-  baseline_term <- (occ == 1 ? occ_baseline : nonocc_baseline);
-  sun_term <- sun_angle_beta * sun_peak_delta_mins;
-  prev_cycle_pos <- (prev_temp - baseline_term - sun_term) / cycle_amplitude;
-  temp ~ normal(
-    baseline_term + 
-      cycle_amplitude * sin(cycle_freq + asin(prev_cycle_pos) + delta_t_mins) +
-      sun_term, noise);
+  temp ~ normal(temp_means, 3);
 }

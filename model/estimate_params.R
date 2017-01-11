@@ -2,7 +2,7 @@ library(RSQLite)
 library(rstan)
 library(insol)
 library(plyr)
-setwd("~/repos/brew-watch/model")
+setwd("C:/repos/brew-watch/model")
 conn <- dbConnect(RSQLite::SQLite(), "data.s3db")
 result <- dbSendQuery(conn, "select * from measurement")
 measurements <- dbFetch(result, n=-1)
@@ -43,8 +43,10 @@ model.data <- with(measurements.with.lux[2:nrow(measurements.with.lux), ], list(
   prev_temp = prev.temp,
   temp = tempc
 ))
-# TODO: error when sigma is not constant
-fit <- stan(file="model.stan", data=model.data, iter=1, chains=1, verbose=TRUE, save_dso=TRUE)
+
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
+fit <- stan(file="model.stan", data=model.data, iter=1000, chains=4, verbose=TRUE)
 #fit <- stan(file="simple.stan", data=list(N=100, v=rnorm(100)), iter=1000, chains=1)
 #handle <- file("simple.cpp")
 #writeLines(stanc(file="simple.stan")$cppcode, handle)

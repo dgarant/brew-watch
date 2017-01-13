@@ -6,6 +6,7 @@
 		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.9.0/moment.min.js"></script>
 		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/dygraph/1.1.0/dygraph-combined.js"></script>
 		<script type="text/javascript" src="/static/js/spline-plotter.js"></script>
+		<script type="text/javascript" src="/static/js/js.cookie.js"></script>
 
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
@@ -30,24 +31,24 @@
             <div class="col-md-3">
                 <h4>Units</h4>
                 <div class="btn-group" data-toggle="buttons">
-                    <label class="btn btn-primary active">
-                        <input type="radio" name="temp_mode" value="temperature_f" checked> Fahrenheit
+                    <label class="btn btn-primary" id="temp-label-f">
+                        <input type="radio" name="temp_mode" value="f"> Fahrenheit
                     </label>
-                    <label class="btn btn-primary">
-                        <input type="radio" name="temp_mode" value="temperature_c"> Celsius
+                    <label class="btn btn-primary" id="temp-label-c">
+                        <input type="radio" name="temp_mode" value="c"> Celsius
                     </label>
                 </div>
             </div>
             <div class="col-md-6">
                 <h4>Time Window</h4>
                 <div class="btn-group" data-toggle="buttons">
-                    <label class="btn btn-default ">
+                    <label class="btn btn-default" id="day-label-1">
                         <input type="radio" name="time_window" value="1" > 1 day
                     </label>
-                    <label class="btn btn-default active">
+                    <label class="btn btn-default" id="day-label-5">
                         <input type="radio" name="time_window" value="5" checked> 5 days
                     </label>
-                    <label class="btn btn-default">
+                    <label class="btn btn-default" id="day-label-30">
                         <input type="radio" name="time_window" value="30"> 1 month
                     </label>
                 </div>
@@ -82,10 +83,15 @@
 		</div>
 
 		<script type="text/javascript">
+            var tempScale = Cookies.get("temp_scale") || "f";
+            var windowDays = Cookies.get("window_days") || "5";
+
+            $("#day-label-" + windowDays).button("toggle");
+            $("#temp-label-" + tempScale).button("toggle");
 
 			function showMeasurements() {
                 var timeWindow = parseInt($("input[name=time_window]:checked").val());
-                var startDate = moment().subtract(timeWindow, "days").format("YYYY-MM-DD");
+                var startDate = moment().subtract(windowDays, "days").format("YYYY-MM-DD");
 				$.getJSON("/measurements?start-date=" + startDate, 
                 function(data) {
 					var dyTempData = [];
@@ -93,7 +99,7 @@
 					var dyLuxData = [];
 					var latestMoment = moment([1900, 01, 01]);
 					var latestMeasurement = null;
-                    var tempField = $("input[name=temp_mode]:checked").val();
+                    var tempField = "temperature_" + tempScale;
 					$(data["results"]).each(function(i, d) { 
                         d["temperature_c"] = (d["temperature_f"] - 32) * (5./9.);
 						var time = moment(d["timestamp"]);
@@ -174,10 +180,14 @@
 			setInterval(showMeasurements, 1000 * 60 * 10);
 
             $("input[name=temp_mode]").change(function() {
+                tempScale = $("input[name=temp_mode]:checked").val();
+                Cookies.set("temp_scale", tempScale);
                 showMeasurements();
             });
 
             $("input[name=time_window]").change(function() {
+                windowDays = parseInt($("input[name=time_window]:checked").val());
+                Cookies.set("window_days", windowDays);
                 showMeasurements();
             });
 					

@@ -73,11 +73,11 @@
 				<div id="humidity-chart">
 				</div>
 			</div>
-			<div class="col-md-5">
+			<!--<div class="col-md-5">
 				<h3>Light (Lux)</h3>
 				<div id="lux-chart">
 				</div>
-			</div>
+			</div>-->
 			</div>
 		</div>
 
@@ -153,7 +153,7 @@
 								},
 								plotter: smoothPlotter
 							});
-					var luxGraph = new Dygraph(document.getElementById("lux-chart"),
+					/*var luxGraph = new Dygraph(document.getElementById("lux-chart"),
 							dyLuxData,
 							{
 								labels: ["Time", "Lux"],
@@ -164,8 +164,8 @@
 									return moment(x).format("ddd h:mm a")
 								},
 								plotter: smoothPlotter
-							});
-                    charts = [tempGraph, humidityGraph, luxGraph];
+							});*/
+                    charts = [tempGraph, humidityGraph];
 				});
 			}
 

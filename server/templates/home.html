@@ -42,6 +42,9 @@
             <div class="col-md-6">
                 <h4>Time Window</h4>
                 <div class="btn-group" data-toggle="buttons">
+                    <label class="btn btn-default" id="day-label-0p25">
+                        <input type="radio" name="time_window" value="0.25" > 6 hours
+                    </label>
                     <label class="btn btn-default" id="day-label-1">
                         <input type="radio" name="time_window" value="1" > 1 day
                     </label>
@@ -84,13 +87,12 @@
 
 		<script type="text/javascript">
             var tempScale = Cookies.get("temp_scale") || "f";
-            var windowDays = Cookies.get("window_days") || "5";
+            var windowDays = parseFloat(Cookies.get("window_days") || "5");
 
-            $("#day-label-" + windowDays).button("toggle");
+            $("#day-label-" + windowDays.toString().replace(".", "p")).button("toggle");
             $("#temp-label-" + tempScale).button("toggle");
 
 			function showMeasurements() {
-                var timeWindow = parseInt($("input[name=time_window]:checked").val());
                 var startDate = moment().subtract(windowDays, "days").format("YYYY-MM-DD");
 				$.getJSON("/measurements?start-date=" + startDate, 
                 function(data) {
@@ -186,7 +188,7 @@
             });
 
             $("input[name=time_window]").change(function() {
-                windowDays = parseInt($("input[name=time_window]:checked").val());
+                windowDays = parseFloat($("input[name=time_window]:checked").val());
                 Cookies.set("window_days", windowDays);
                 showMeasurements();
             });

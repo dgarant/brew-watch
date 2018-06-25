@@ -15,14 +15,14 @@
 	<body>
 		<nav class="navbar navbar-default">
 			<div class="container-fluid">
-				<a class="navbar-brand" href="#">Lab Temp</a>
+				<a class="navbar-brand" href="#">Brew Watch</a>
 			</div>
 		</nav>
 	    <div class="col-md-offset-1">
 		<div class="row">
-			<!-- <div class="col-md-4">
-				<h3>Target Temperature: 72&deg;F - 75&deg;F</h3>
-			</div> -->
+			<div class="col-md-4">
+				<h3>Target Temperature: 62&deg;F - 68&deg;F</h3>
+			</div>
 			<div class="col-md-6">
 				<h3 id="last-reading-indicator"></h3>
 			</div>
@@ -62,14 +62,24 @@
 				<h3 id="last-temp-indicator"></h3>
 			</div>
 			<div class="col-md-6">
-				<h3 id="heat-indicator"></h3>
+				<h3 id="freezer-indicator"></h3>
 			</div>
 		</div>
 
 		<div class="row">
 			<div class="col-md-5">
-				<h3>Temperature</h3>
+				<h3>Basement Temperature</h3>
 				<div id="temp-chart">
+				</div>
+			</div>
+			<div class="col-md-5">
+				<h3>Freezer Temperature</h3>
+				<div id="probe-temp-chart">
+				</div>
+			</div>
+			<div class="col-md-5">
+				<h3>Freezer On/Off</h3>
+				<div id="on-off-chart">
 				</div>
 			</div>
 			<div class="col-md-5">
@@ -77,11 +87,11 @@
 				<div id="humidity-chart">
 				</div>
 			</div>
-			<!--<div class="col-md-5">
+			<div class="col-md-5">
 				<h3>Light (Lux)</h3>
 				<div id="lux-chart">
 				</div>
-			</div>-->
+			</div>
 			</div>
 		</div>
 
@@ -97,24 +107,30 @@
 				$.getJSON("/measurements?start-date=" + startDate, 
                 function(data) {
 					var dyTempData = [];
+					var dyProbeTempData = [];
+					var dyOnOffData = [];
 					var dyHumidData = [];
 					var dyLuxData = [];
 					var latestMoment = moment([1900, 01, 01]);
 					var latestMeasurement = null;
                     var tempField = "temperature_" + tempScale;
+                    var probeTempField = "probe_temperature_" + tempScale;
 					$(data["results"]).each(function(i, d) { 
                         d["temperature_c"] = (d["temperature_f"] - 32) * (5./9.);
+                        d["probe_temperature_c"] = (d["probe_temperature_f"] - 32) * (5./9.);
 						var time = moment(d["timestamp"]);
 						if(time.isAfter(latestMoment)) {
 							latestTime = time.local();
 							latestMeasurement = d;
 						}
 						dyTempData.push([time.toDate(), d[tempField]]);
+						dyProbeTempData.push([time.toDate(), d[probeTempField]]);
 						dyHumidData.push([time.toDate(), d["humidity_pct"]]);
 						dyLuxData.push([time.toDate(), d["lux"]]);
+					    dyOnOffData.push([time.toDate(), d["is_heat_on"]]);
 					});
 					$("#last-temp-indicator").html("Current Temperature: <b>" + (Math.round(latestMeasurement[tempField] * 10) / 10.) + "</b>");
-					//$("#heat-indicator").html("Heating Pad <b>" + (latestMeasurement["is_heat_on"] ? "On" : "Off") + "</b>");
+					$("#freezer-indicator").html("Freezer <b>" + (latestMeasurement["is_heat_on"] ? "On" : "Off") + "</b>");
 					$("#last-reading-indicator").html("Last Update: <b>" + latestTime.format("LLLL") + "</b>");
 
                     var blockRedraw = false;
@@ -147,8 +163,22 @@
 									return moment(x).format("ddd h:mm a")
 								},
 								plotter: smoothPlotter
-
 							});
+
+					var tempGraph = new Dygraph(document.getElementById("probe-temp-chart"),
+							dyProbeTempData,
+							{
+								labels: ["Time", tempField == "probe_temperature_f" ? "Temp (F)" : "Temp (C)"],
+								showRangeSelector: true,
+								color: "steelblue",
+								strokeWidth: 2,
+                                drawCallback: synchronizeDrawCallback,
+								xValueFormatter: function(x) {
+									return moment(x).format("ddd h:mm a")
+								},
+								plotter: smoothPlotter
+							});
+
 					var humidityGraph = new Dygraph(document.getElementById("humidity-chart"),
 							dyHumidData,
 							{
@@ -161,7 +191,8 @@
 								},
 								plotter: smoothPlotter
 							});
-					/*var luxGraph = new Dygraph(document.getElementById("lux-chart"),
+
+					var luxGraph = new Dygraph(document.getElementById("lux-chart"),
 							dyLuxData,
 							{
 								labels: ["Time", "Lux"],
@@ -172,8 +203,20 @@
 									return moment(x).format("ddd h:mm a")
 								},
 								plotter: smoothPlotter
-							});*/
-                    charts = [tempGraph, humidityGraph];
+							});
+
+					var onOffGraph = new Dygraph(document.getElementById("on-off-chart"),
+							dyOnOffData,
+							{
+								labels: ["Time", "State"],
+								showRangeSelector: true,
+								strokeWidth: 2,
+                                drawCallback: synchronizeDrawCallback,
+								xValueFormatter: function(x) {
+									return moment(x).format("ddd h:mm a")
+								},
+								plotter: smoothPlotter
+							});
 				});
 			}
 

@@ -6,6 +6,7 @@
 		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.9.0/moment.min.js"></script>
 		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/dygraph/1.1.0/dygraph-combined.js"></script>
 		<script type="text/javascript" src="/static/js/spline-plotter.js"></script>
+		<script type="text/javascript" src="/static/js/js.cookie.js"></script>
 
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
@@ -14,14 +15,14 @@
 	<body>
 		<nav class="navbar navbar-default">
 			<div class="container-fluid">
-				<a class="navbar-brand" href="#">Lab Temp</a>
+				<a class="navbar-brand" href="#">Brew Watch</a>
 			</div>
 		</nav>
 	    <div class="col-md-offset-1">
 		<div class="row">
-			<!-- <div class="col-md-4">
-				<h3>Target Temperature: 72&deg;F - 75&deg;F</h3>
-			</div> -->
+			<div class="col-md-4">
+				<h3>Target Temperature: 62&deg;F - 68&deg;F</h3>
+			</div>
 			<div class="col-md-6">
 				<h3 id="last-reading-indicator"></h3>
 			</div>
@@ -30,24 +31,27 @@
             <div class="col-md-3">
                 <h4>Units</h4>
                 <div class="btn-group" data-toggle="buttons">
-                    <label class="btn btn-primary active">
-                        <input type="radio" name="temp_mode" value="temperature_f" checked> Fahrenheit
+                    <label class="btn btn-primary" id="temp-label-f">
+                        <input type="radio" name="temp_mode" value="f"> Fahrenheit
                     </label>
-                    <label class="btn btn-primary">
-                        <input type="radio" name="temp_mode" value="temperature_c"> Celsius
+                    <label class="btn btn-primary" id="temp-label-c">
+                        <input type="radio" name="temp_mode" value="c"> Celsius
                     </label>
                 </div>
             </div>
             <div class="col-md-6">
                 <h4>Time Window</h4>
                 <div class="btn-group" data-toggle="buttons">
-                    <label class="btn btn-default ">
+                    <label class="btn btn-default" id="day-label-0p25">
+                        <input type="radio" name="time_window" value="0.25" > 6 hours
+                    </label>
+                    <label class="btn btn-default" id="day-label-1">
                         <input type="radio" name="time_window" value="1" > 1 day
                     </label>
-                    <label class="btn btn-default active">
+                    <label class="btn btn-default" id="day-label-5">
                         <input type="radio" name="time_window" value="5" checked> 5 days
                     </label>
-                    <label class="btn btn-default">
+                    <label class="btn btn-default" id="day-label-30">
                         <input type="radio" name="time_window" value="30"> 1 month
                     </label>
                 </div>
@@ -58,14 +62,24 @@
 				<h3 id="last-temp-indicator"></h3>
 			</div>
 			<div class="col-md-6">
-				<h3 id="heat-indicator"></h3>
+				<h3 id="freezer-indicator"></h3>
 			</div>
 		</div>
 
 		<div class="row">
 			<div class="col-md-5">
-				<h3>Temperature</h3>
+				<h3>Basement Temperature</h3>
 				<div id="temp-chart">
+				</div>
+			</div>
+			<div class="col-md-5">
+				<h3>Freezer Temperature</h3>
+				<div id="probe-temp-chart">
+				</div>
+			</div>
+			<div class="col-md-5">
+				<h3>Freezer On/Off</h3>
+				<div id="on-off-chart">
 				</div>
 			</div>
 			<div class="col-md-5">
@@ -82,31 +96,41 @@
 		</div>
 
 		<script type="text/javascript">
+            var tempScale = Cookies.get("temp_scale") || "f";
+            var windowDays = parseFloat(Cookies.get("window_days") || "5");
+
+            $("#day-label-" + windowDays.toString().replace(".", "p")).button("toggle");
+            $("#temp-label-" + tempScale).button("toggle");
 
 			function showMeasurements() {
-                var timeWindow = parseInt($("input[name=time_window]:checked").val());
-                var startDate = moment().subtract(timeWindow, "days").format("YYYY-MM-DD");
+                var startDate = moment().subtract(windowDays, "days").format("YYYY-MM-DD");
 				$.getJSON("/measurements?start-date=" + startDate, 
                 function(data) {
 					var dyTempData = [];
+					var dyProbeTempData = [];
+					var dyOnOffData = [];
 					var dyHumidData = [];
 					var dyLuxData = [];
 					var latestMoment = moment([1900, 01, 01]);
 					var latestMeasurement = null;
-                    var tempField = $("input[name=temp_mode]:checked").val();
+                    var tempField = "temperature_" + tempScale;
+                    var probeTempField = "probe_temperature_" + tempScale;
 					$(data["results"]).each(function(i, d) { 
                         d["temperature_c"] = (d["temperature_f"] - 32) * (5./9.);
+                        d["probe_temperature_c"] = (d["probe_temperature_f"] - 32) * (5./9.);
 						var time = moment(d["timestamp"]);
 						if(time.isAfter(latestMoment)) {
 							latestTime = time.local();
 							latestMeasurement = d;
 						}
 						dyTempData.push([time.toDate(), d[tempField]]);
+						dyProbeTempData.push([time.toDate(), d[probeTempField]]);
 						dyHumidData.push([time.toDate(), d["humidity_pct"]]);
 						dyLuxData.push([time.toDate(), d["lux"]]);
+					    dyOnOffData.push([time.toDate(), d["is_heat_on"]]);
 					});
 					$("#last-temp-indicator").html("Current Temperature: <b>" + (Math.round(latestMeasurement[tempField] * 10) / 10.) + "</b>");
-					//$("#heat-indicator").html("Heating Pad <b>" + (latestMeasurement["is_heat_on"] ? "On" : "Off") + "</b>");
+					$("#freezer-indicator").html("Freezer <b>" + (latestMeasurement["is_heat_on"] ? "On" : "Off") + "</b>");
 					$("#last-reading-indicator").html("Last Update: <b>" + latestTime.format("LLLL") + "</b>");
 
                     var blockRedraw = false;
@@ -139,8 +163,22 @@
 									return moment(x).format("ddd h:mm a")
 								},
 								plotter: smoothPlotter
-
 							});
+
+					var tempGraph = new Dygraph(document.getElementById("probe-temp-chart"),
+							dyProbeTempData,
+							{
+								labels: ["Time", tempField == "probe_temperature_f" ? "Temp (F)" : "Temp (C)"],
+								showRangeSelector: true,
+								color: "steelblue",
+								strokeWidth: 2,
+                                drawCallback: synchronizeDrawCallback,
+								xValueFormatter: function(x) {
+									return moment(x).format("ddd h:mm a")
+								},
+								plotter: smoothPlotter
+							});
+
 					var humidityGraph = new Dygraph(document.getElementById("humidity-chart"),
 							dyHumidData,
 							{
@@ -153,6 +191,7 @@
 								},
 								plotter: smoothPlotter
 							});
+
 					var luxGraph = new Dygraph(document.getElementById("lux-chart"),
 							dyLuxData,
 							{
@@ -165,7 +204,19 @@
 								},
 								plotter: smoothPlotter
 							});
-                    charts = [tempGraph, humidityGraph, luxGraph];
+
+					var onOffGraph = new Dygraph(document.getElementById("on-off-chart"),
+							dyOnOffData,
+							{
+								labels: ["Time", "State"],
+								showRangeSelector: true,
+								strokeWidth: 2,
+                                drawCallback: synchronizeDrawCallback,
+								xValueFormatter: function(x) {
+									return moment(x).format("ddd h:mm a")
+								},
+								plotter: smoothPlotter
+							});
 				});
 			}
 
@@ -174,10 +225,14 @@
 			setInterval(showMeasurements, 1000 * 60 * 10);
 
             $("input[name=temp_mode]").change(function() {
+                tempScale = $("input[name=temp_mode]:checked").val();
+                Cookies.set("temp_scale", tempScale);
                 showMeasurements();
             });
 
             $("input[name=time_window]").change(function() {
+                windowDays = parseFloat($("input[name=time_window]:checked").val());
+                Cookies.set("window_days", windowDays);
                 showMeasurements();
             });
 					

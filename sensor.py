@@ -45,11 +45,11 @@ if True: # disabling power
     with open("/sys/class/gpio/gpio15/value") as pin:
 	    pin_15_on = int(pin.read(1))
 
-    if f_temperature_bb <= TEMPERATURE_OFF_THRESHOLD and pin_15_on:
+    if probe_temp_f <= TEMPERATURE_OFF_THRESHOLD and pin_15_on:
 	    print("Turning off freezer")
 	    action = "off"
 	    GPIO.output(15, False)	
-    elif f_temperature_bb >= TEMPERATURE_ON_THRESHOLD and not pin_15_on:
+    elif probe_temp_f >= TEMPERATURE_ON_THRESHOLD and not pin_15_on:
 	    print("Turning on freezer")
 	    action = "on"
 	    GPIO.output(15, True)	
@@ -69,7 +69,7 @@ else:
     lux_median = None
 
 data={"temp" : temperature, 
-      "temp_scale" : "F", 
+      "temp_scale" : "C", 
       "probe_temp" : probe_temp_f,
       "probe_temp_scale" : "F",
       "action" : action,

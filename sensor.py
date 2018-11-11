@@ -7,13 +7,15 @@ import RPi.GPIO as GPIO
 from w1thermsensor import W1ThermSensor
 from tentacle_pi.TSL2561 import TSL2561
 import time
+import datetime
 
 SENSOR_PIN=14
 POWERSWITCH_PIN=15
 
 # freezer temperature thresholds for on/off
-TEMPERATURE_ON_THRESHOLD=68
-TEMPERATURE_OFF_THRESHOLD=64
+#TEMPERATURE_ON_THRESHOLD=69
+TEMPERATURE_ON_THRESHOLD=69
+TEMPERATURE_OFF_THRESHOLD=63
 
 def read_probe_temp():
     sensor = W1ThermSensor()
@@ -45,7 +47,8 @@ if True: # disabling power
     with open("/sys/class/gpio/gpio15/value") as pin:
 	    pin_15_on = int(pin.read(1))
 
-    if probe_temp_f <= TEMPERATURE_OFF_THRESHOLD and pin_15_on:
+    cur_hour = datetime.datetime.now().hour
+    if (probe_temp_f <= TEMPERATURE_OFF_THRESHOLD or (cur_hour > 9 and cur_hour < 21)) and pin_15_on:
 	    print("Turning off freezer")
 	    action = "off"
 	    GPIO.output(15, False)	

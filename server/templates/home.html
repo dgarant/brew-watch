@@ -115,6 +115,7 @@
 					var latestMeasurement = null;
                     var tempField = "temperature_" + tempScale;
                     var probeTempField = "probe_temperature_" + tempScale;
+
 					$(data["results"]).each(function(i, d) { 
                         d["temperature_c"] = (d["temperature_f"] - 32) * (5./9.);
                         d["probe_temperature_c"] = (d["probe_temperature_f"] - 32) * (5./9.);
@@ -168,7 +169,7 @@
 					var tempGraph = new Dygraph(document.getElementById("probe-temp-chart"),
 							dyProbeTempData,
 							{
-								labels: ["Time", tempField == "probe_temperature_f" ? "Temp (F)" : "Temp (C)"],
+								labels: ["Time", probeTempField == "probe_temperature_f" ? "Temp (F)" : "Temp (C)"],
 								showRangeSelector: true,
 								color: "steelblue",
 								strokeWidth: 2,
